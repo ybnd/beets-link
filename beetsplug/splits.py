@@ -15,6 +15,27 @@ class SplitsPlugin(BeetsPlugin):
 
         })
 
+        self.register_listener('album_imported', self.infer_split)
+
+    def infer_split(self, lib, album):
+        """ Check for split/compilation 'flags':
+                - comp:T?
+                    * maybe: separate comp into comp and split, add option for additional fields
+                - not all tracks have the same artist?
+                - albumartist field contains (configurable) separator(s), e.g. `/`, `&`, `,`, `and`, `with`, `feat`?
+                    * separated artists already in library?
+
+                -> prompt user if uncertain
+
+                * also handle case when imported album is NOT a split, but is BY an artist which only had splits previously!
+        """
+        pass
+
+    def _link_split(self):
+        """ Add symlinks to split to all relevant albumartist directories; create if not already present
+        """
+        pass
+
     def commands(self):
         return [SplitsCommand(self)]
 
