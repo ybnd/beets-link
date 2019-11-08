@@ -8,6 +8,10 @@ import beets.autotag.hooks as hooks
 import os
 
 class SplitsPlugin(BeetsPlugin):
+    """
+
+    """
+
     def __init__(self):
         super(SplitsPlugin).__init__()
 
@@ -16,6 +20,7 @@ class SplitsPlugin(BeetsPlugin):
         })
 
         self.register_listener('album_imported', self.infer_split)
+        # https://beets.readthedocs.io/en/v1.3.17/dev/plugins.html#listen-for-events
 
     def infer_split(self, lib, album):
         """ Check for split/compilation 'flags':
@@ -23,12 +28,16 @@ class SplitsPlugin(BeetsPlugin):
                     * maybe: separate comp into comp and split, add option for additional fields
                 - not all tracks have the same artist?
                 - albumartist field contains (configurable) separator(s), e.g. `/`, `&`, `,`, `and`, `with`, `feat`?
+                    https://beets.readthedocs.io/en/v1.3.17/dev/plugins.html#read-configuration-options
                     * separated artists already in library?
 
                 -> prompt user if uncertain
+                    https://beets.readthedocs.io/en/v1.3.17/dev/plugins.html#append-prompt-choices
 
                 * also handle case when imported album is NOT a split, but is BY an artist which only had splits previously!
         """
+        # https://beets.readthedocs.io/en/v1.3.17/dev/api.html#the-library-class
+        # https://beets.readthedocs.io/en/v1.3.17/dev/api.html#album
         pass
 
     def _link_split(self):
