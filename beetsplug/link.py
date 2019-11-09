@@ -27,7 +27,7 @@ class SplitsPlugin(BeetsPlugin):
                 - comp:T?
                     * maybe: separate comp into comp and split, add option for additional fields
                 - not all tracks have the same artist?
-                - albumartist field contains (configurable) separator(s), e.g. `/`, `&`, `,`, `and`, `with`, `feat`?
+                - albumartist field contains (configurable) separator(s), e.g. `/`, `&`, `,`, `and`, `with`, `feat`, `vs.`, `et`?
                     https://beets.readthedocs.io/en/v1.3.17/dev/plugins.html#read-configuration-options
                     * separated artists already in library?
 
