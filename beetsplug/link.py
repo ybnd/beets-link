@@ -28,12 +28,12 @@ class LinkPlugin(BeetsPlugin):
 
     """
 
-    SEPARATORS = {
+    DEFAULT_SEPARATORS = {
         'albumartist': ' [/&\\-] |\\, | and | with | feat ',
         'album': ' [/&] | and | with | feat '
     }
 
-    QUERIES = [  # todo: get this from config!
+    DEFAULT_QUERIES = [  # todo: get this from config!
         'albumartist:VA',
         'albumartist:"Various Artists"',
         'albumartist:with',
@@ -41,29 +41,37 @@ class LinkPlugin(BeetsPlugin):
         'album:split',
     ]
 
-    IGNORE = [
+    DEFAULT_IGNORE = [
         'dontlink:T',
         'albumartist:"Between the Buried and Me"',
         'albumartist:"You Break, You Buy"'
     ]
 
-    LINKPATH = [ # todo: implement %collaborator handling function: repeat for all collaborators ~ https://beets.readthedocs.io/en/stable/dev/plugins.html#add-path-format-functions-and-fields
+    DEFAULT_LINKPATH = [ # todo: implement %collaborator handling function: repeat for all collaborators ~ https://beets.readthedocs.io/en/stable/dev/plugins.html#add-path-format-functions-and-fields
         'default: $relevant_collaborators/$year - $album/$track $title'
     ]
 
     album_types = {
         'collaborators': types.STRING, # string to be interpreted as a JSON list by LinkPlugin.collaborator
         'dontlink': types.BOOLEAN,
-        'haslinks': types.BOOLEAN,
         'links': types.STRING          # string to be interpreted as a JSON list by LinkPlugin._remove_links
     }
 
     def __init__(self):
         super(LinkPlugin, self).__init__()
 
+        # todo: set instance variables for separators, queries, ignore & linkpath ~ config, defaults in LinkPlugin class attirbutes
+        self.SEPARATORS = self.DEFAULT_SEPARATORS
+        self.QUERIES = self.DEFAULT_QUERIES
+        self.IGNORE = self.DEFAULT_IGNORE
+        self.LINKPATH = self.DEFAULT_LINKPATH
+
         self.template_fields['relevant_collaborator'] = self._get_collaborators
         self.register_listener('album_imported', self.on_import)
         # https://beets.readthedocs.io/en/v1.3.17/dev/plugins.html#listen-for-events
+
+    def commands(self):
+        return [LinkCommand(self)]
 
     def on_import(self, lib, album):
         """ Check for split/compilation 'flags':
@@ -82,16 +90,17 @@ class LinkPlugin(BeetsPlugin):
         # https://beets.readthedocs.io/en/v1.3.17/dev/api.html#the-library-class
         # https://beets.readthedocs.io/en/v1.3.17/dev/api.html#album
 
-        print(f"Got here!")
+        if self._is_candidate(album):
+            if self._prompt_user(lib, album):
+                self._add_links(album)
         pass
 
     def add(self, lib, opts):
         print(f'Should be adding links to library ~ config')
 
         for album in self._get_candidate_albums(lib):
-            self._prompt_user(lib, album)
-
-
+            if self._prompt_user(lib, album):
+                self._add_links(album)
         pass
 
     def remove(self, lib, opts):
@@ -114,32 +123,34 @@ class LinkPlugin(BeetsPlugin):
 
         return albums
 
-    def _get_all_splits(self, lib):
+    def _is_candidate(self, album):
+        # todo: check if album matches self.SEPARATORS, self.QUERIES and self.IGNORE
         pass
 
-    def _infer_if_split(self, lib, album):
-        """ Infer whether album is a split based on config """
+    def _get_all_splits(self, lib):
+        # todo: get all albums with a non-empty "links" field
+            # Links present -> links:"['path-to-link1', 'path-to-link2']"
+            # Links were once present, but have been deleted: "[]"
         pass
 
     def _prompt_user(self, lib, album):
         """ Prompt user whether it's okay to consider this album a split, and whether the list of collaborators is ok """
         pass
 
-    def _add_links(self, lib, album):
+    def _add_links(self, album):
         """ For every collaborator in album, add a link in their respective directories if they meet the conditions set in config """
+        # todo: write link paths to album['links']
         pass
 
     def _remove_links(self, lib, album):
+        # todo: remove links in album['links'], replace with []
         """ For every collaborator in album, remove link if present """
         pass
 
-    def commands(self):
-        return [LinkCommand(self)]
-
-
     def _get_collaborators(self, item):
+        # todo: only return relevant collaborators (i.e. more than x albums, defined in config maybe?)
         # todo: split album['albumartist'] by
-        # todo: return JSON formatted list
+        # todo: return JSON formatted list -> write to album['links']
         album = item.get_album()
 
 
