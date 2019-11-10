@@ -168,6 +168,7 @@ class LinkPlugin(BeetsPlugin):
         """ For every collaborator in album, add a link in their respective directories if they meet the conditions set in config """
         # todo: write link paths to album['links']
         # todo: make links with beets.util.link
+        # todo: links should be relative
         pass
 
     def _remove_links(self, lib, album):
