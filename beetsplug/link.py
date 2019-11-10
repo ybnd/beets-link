@@ -3,6 +3,7 @@ from beets import ui
 from beets.ui import Subcommand, get_path_formats, input_yn, UserError, print_
 from beets.library import Item
 from beets.dbcore.query import AndQuery, OrQuery, MatchQuery
+from beets.dbcore import types
 from beets.util import mkdirall, normpath, syspath
 import beets.autotag.hooks as hooks
 import os
@@ -27,9 +28,40 @@ class LinkPlugin(BeetsPlugin):
 
     """
 
+    SEPARATORS = {
+        'albumartist': ' [/&\\-] |\\, | and | with | feat ',
+        'album': ' [/&] | and | with | feat '
+    }
+
+    QUERIES = [  # todo: get this from config!
+        'albumartist:VA',
+        'albumartist:"Various Artists"',
+        'albumartist:with',
+        'albumartist:feat',
+        'album:split',
+    ]
+
+    IGNORE = [
+        'dontlink:T',
+        'albumartist:"Between the Buried and Me"',
+        'albumartist:"You Break, You Buy"'
+    ]
+
+    LINKPATH = [ # todo: implement %collaborator handling function: repeat for all collaborators ~ https://beets.readthedocs.io/en/stable/dev/plugins.html#add-path-format-functions-and-fields
+        'default: $relevant_collaborators/$year - $album/$track $title'
+    ]
+
+    album_types = {
+        'collaborators': types.STRING, # string to be interpreted as a JSON list by LinkPlugin.collaborator
+        'dontlink': types.BOOLEAN,
+        'haslinks': types.BOOLEAN,
+        'links': types.STRING          # string to be interpreted as a JSON list by LinkPlugin._remove_links
+    }
+
     def __init__(self):
         super(LinkPlugin, self).__init__()
 
+        self.template_fields['relevant_collaborator'] = self._get_collaborators
         self.register_listener('album_imported', self.on_import)
         # https://beets.readthedocs.io/en/v1.3.17/dev/plugins.html#listen-for-events
 
@@ -55,15 +87,32 @@ class LinkPlugin(BeetsPlugin):
 
     def add(self, lib, opts):
         print(f'Should be adding links to library ~ config')
+
+        for album in self._get_candidate_albums(lib):
+            self._prompt_user(lib, album)
+
+
         pass
 
     def remove(self, lib, opts):
         print(f'Should be removing links from library')
         pass
 
-    def _check_all_albums(self, 'lib', 'album'):
+    def _get_candidate_albums(self, lib):
         """ For all albums in library, check whether they could be a split (will be slow, probably) """
-        pass
+
+        negation = ''
+        for ignore in self.IGNORE:
+            negation = negation + f'^{ignore} '
+
+        albums = []
+
+        for query in [f'{k}::"{v}"' for k,v in self.SEPARATORS.items()] + self.QUERIES:
+            for album in lib.albums(query=f"{query} {negation}"):
+                if album['path'] not in [a['path'] for a in albums]:
+                    albums.append(album)
+
+        return albums
 
     def _get_all_splits(self, lib):
         pass
@@ -72,12 +121,8 @@ class LinkPlugin(BeetsPlugin):
         """ Infer whether album is a split based on config """
         pass
 
-    def _prompt_user(self):
+    def _prompt_user(self, lib, album):
         """ Prompt user whether it's okay to consider this album a split, and whether the list of collaborators is ok """
-        pass
-
-    def _write_collaborators(self, lib, album):
-        """ Save list of collaborators to album metadata """
         pass
 
     def _add_links(self, lib, album):
@@ -90,6 +135,13 @@ class LinkPlugin(BeetsPlugin):
 
     def commands(self):
         return [LinkCommand(self)]
+
+
+    def _get_collaborators(self, item):
+        # todo: split album['albumartist'] by
+        # todo: return JSON formatted list
+        album = item.get_album()
+
 
 
 class LinkCommand(Subcommand):
