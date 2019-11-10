@@ -1,12 +1,13 @@
 from beets.plugins import BeetsPlugin
 from beets import ui
 from beets.ui import Subcommand, get_path_formats, input_yn, UserError, print_
-from beets.library import Item
+from beets.library import Item, Album
 from beets.dbcore.query import AndQuery, OrQuery, MatchQuery
 from beets.dbcore import types
 from beets.util import mkdirall, normpath, syspath
 import beets.autotag.hooks as hooks
 import os
+import re
 
 import os.path
 import threading
@@ -29,8 +30,8 @@ class LinkPlugin(BeetsPlugin):
     """
 
     DEFAULT_SEPARATORS = {
-        'albumartist': ' [/&\\-] |\\, | and | with | feat ',
-        'album': ' [/&] | and | with | feat '
+        'albumartist': ['/', '&', '\\-', '\\,', ' and ', ' with ', ' feat\\.?'],
+        'album': ['/']
     }
 
     DEFAULT_QUERIES = [  # todo: get this from config!
@@ -46,6 +47,10 @@ class LinkPlugin(BeetsPlugin):
         'albumartist:"Between the Buried and Me"',
         'albumartist:"You Break, You Buy"'
     ]
+
+    DEFAULT_FILTER = 'comp:f ^albumtype:split ^albumtype:live ^albumtype:compilation'
+
+    DEFAULT_MINIMUM = 1
 
     DEFAULT_LINKPATH = [ # todo: implement %collaborator handling function: repeat for all collaborators ~ https://beets.readthedocs.io/en/stable/dev/plugins.html#add-path-format-functions-and-fields
         'default: $relevant_collaborators/$year - $album/$track $title'
@@ -65,6 +70,8 @@ class LinkPlugin(BeetsPlugin):
         self.QUERIES = self.DEFAULT_QUERIES
         self.IGNORE = self.DEFAULT_IGNORE
         self.LINKPATH = self.DEFAULT_LINKPATH
+        self.FILTER = self.DEFAULT_FILTER
+        self.MINIMUM = self.DEFAULT_MINIMUM
 
         self.template_fields['relevant_collaborator'] = self._get_collaborators
         self.register_listener('album_imported', self.on_import)
@@ -99,8 +106,9 @@ class LinkPlugin(BeetsPlugin):
         print(f'Should be adding links to library ~ config')
 
         for album in self._get_candidate_albums(lib):
-            if self._prompt_user(lib, album):
-                self._add_links(album)
+            cont, filtered_collaborators = self._prompt_user(lib, album)
+            if cont: # todo: this is not really clean though...
+                self._add_links(album, filtered_collaborators)
         pass
 
     def remove(self, lib, opts):
@@ -116,7 +124,7 @@ class LinkPlugin(BeetsPlugin):
 
         albums = []
 
-        for query in [f'{k}::"{v}"' for k,v in self.SEPARATORS.items()] + self.QUERIES:
+        for query in [f'{k}::"{"|".join(v)}"' for k,v in self.SEPARATORS.items()] + self.QUERIES:
             for album in lib.albums(query=f"{query} {negation}"):
                 if album['path'] not in [a['path'] for a in albums]:
                     albums.append(album)
@@ -135,11 +143,31 @@ class LinkPlugin(BeetsPlugin):
 
     def _prompt_user(self, lib, album):
         """ Prompt user whether it's okay to consider this album a split, and whether the list of collaborators is ok """
-        pass
 
-    def _add_links(self, album):
+        filtered_collaborators = [
+            c for c in self._get_collaborators(album)
+            if len(lib.albums(query=f'albumartist:"{c}" ' + self.FILTER)) > self.MINIMUM
+        ]
+
+        if filtered_collaborators:
+            print(f"Link album {album['albumartist']} - {album['album']} to contributing artists {filtered_collaborators}?")
+                # todo: integrate with beets CLI options system
+                    # todo: add option to edit collaborator list (in JSON form)
+                    # todo: add option to 'don't ask again' -> 'for this album' 'for this albumartist' => this sets album['dontlink'] to True
+            if True:
+                return True, filtered_collaborators
+            else:
+                pass
+        else:
+            return False, []
+
+
+
+
+    def _add_links(self, album, collaborators):
         """ For every collaborator in album, add a link in their respective directories if they meet the conditions set in config """
         # todo: write link paths to album['links']
+        # todo: make links with beets.util.link
         pass
 
     def _remove_links(self, lib, album):
@@ -151,8 +179,15 @@ class LinkPlugin(BeetsPlugin):
         # todo: only return relevant collaborators (i.e. more than x albums, defined in config maybe?)
         # todo: split album['albumartist'] by
         # todo: return JSON formatted list -> write to album['links']
-        album = item.get_album()
 
+        if type(item) is Item:
+            album = item.get_album()
+        elif type(item) is Album:
+            album = item
+        else:
+            return []
+
+        return [s.strip() for s in re.split("|".join(self.SEPARATORS['albumartist']), album['album'])]
 
 
 class LinkCommand(Subcommand):
