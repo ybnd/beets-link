@@ -58,9 +58,9 @@ class LinkPlugin(BeetsPlugin):
     ]
 
     album_types = {
-        'collaborators': types.STRING, # string to be interpreted as a JSON list by LinkPlugin.collaborator
+        'collaborators': types.STRING, # string to be interpreted as a JSON list
         'dontlink': types.BOOLEAN,
-        'links': types.STRING          # string to be interpreted as a JSON list by LinkPlugin._remove_links
+        'links': types.STRING          # string to be interpreted as a JSON list
     }
 
     def __init__(self):
@@ -99,15 +99,15 @@ class LinkPlugin(BeetsPlugin):
         # https://beets.readthedocs.io/en/v1.3.17/dev/api.html#album
 
         if self._is_candidate(album):
-            if self._prompt_user(lib, album):
-                self._add_links(album)
+            if self._prompt_user_about_collaborators(lib, album):
+                self._add_links(album, self._prompt_user_about_collaborators(lib, album))
         pass
 
     def add(self, lib, opts):
         print(f'Should be adding links to library ~ config')
 
         for album in self._get_candidate_albums(lib):
-            cont, filtered_collaborators = self._prompt_user(lib, album)
+            cont, filtered_collaborators = self._prompt_user_about_collaborators(lib, album)
             if cont: # todo: this is not really clean though...
                 self._add_links(album, filtered_collaborators)
         pass
@@ -142,7 +142,7 @@ class LinkPlugin(BeetsPlugin):
             # Links were once present, but have been deleted: "[]"
         pass
 
-    def _prompt_user(self, lib, album):
+    def _prompt_user_about_collaborators(self, lib, album):
         """ Prompt user whether it's okay to consider this album a split, and whether the list of collaborators is ok """
 
         filtered_collaborators = [
@@ -216,4 +216,4 @@ class LinkCommand(Subcommand):
             self.plugin.remove(lib, opts)
 
     def parse_args(self, args):
-        return self.parser.parse_args(args), []
+        return self.parser.parse_args(args), [] # todo: why was this empty list needed again?
